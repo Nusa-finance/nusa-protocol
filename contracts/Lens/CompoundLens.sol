@@ -286,7 +286,7 @@ contract CompoundLens {
         uint balance = comp.balanceOf(account);
         comptroller.claimComp(account);
         uint newBalance = comp.balanceOf(account);
-        uint accrued = comptroller.compAccrued(account);
+        uint accrued = comptroller.compAccrued(account) / 10;
         uint total = add(accrued, newBalance, "sum comp total");
         uint allocated = sub(total, balance, "sub allocated");
 
