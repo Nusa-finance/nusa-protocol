@@ -260,6 +260,30 @@ contract SwapProxyImplementation is SwapProxyStorage {
 
     receive() external payable {}
 
+    // events
+    event swapTokenForToken(        
+        address tokenFrom,
+        address tokenTo,
+        uint    amountIn,
+        uint    amountOut,
+        address to,
+        uint    deadline
+    );
+    event swapEthForToken(
+        address tokenTo,
+        uint    amountIn,
+        uint    amountOut,
+        address to,
+        uint    deadline
+    );
+    event swapTokenForEth(
+        address tokenFrom,
+        uint    amountIn,
+        uint    amountOut,
+        address to,
+        uint    deadline
+    );
+
     // setters
     function setSwapRouter(address newSwapRouter) external {
         require(msg.sender == owner, "UNAUTHORIZED");
@@ -296,7 +320,7 @@ contract SwapProxyImplementation is SwapProxyStorage {
         address to,
         uint deadline
     ) external {
-        (address tokenA, address tokenB) = (path[0], path[1]);
+        (address tokenA, address tokenB) = (path[0], path[path.length-1]);
         uint tokenBBalance = IERC20(tokenB).balanceOf(address(this));
 
         TransferHelper.safeTransferFrom(tokenA, msg.sender, address(this), amountIn);
@@ -308,10 +332,11 @@ contract SwapProxyImplementation is SwapProxyStorage {
         uint tokenBBalanceNew = IERC20(tokenB).balanceOf(address(this));
         uint swapAmount = tokenBBalanceNew - tokenBBalance;
         uint commAmount = swapAmount * swapCommission / 10000;
-        uint amount = swapAmount - commAmount;
 
-        TransferHelper.safeTransfer(tokenB, to, amount);
+        TransferHelper.safeTransfer(tokenB, to, (swapAmount - commAmount));
         TransferHelper.safeTransfer(tokenB, swapFeeAddress, commAmount);
+
+        emit swapTokenForToken(tokenA, tokenB, amountIn, swapAmount, to, deadline);
     }
 
     function swapExactETHForTokensSupportingFeeOnTransferTokens(
@@ -320,7 +345,7 @@ contract SwapProxyImplementation is SwapProxyStorage {
         address to,
         uint deadline
     ) external payable {
-        (address tokenB) = (path[1]);
+        (address tokenB) = (path[path.length-1]);
         uint tokenBBalance = IERC20(tokenB).balanceOf(address(this));
 
         IPancakeRouter02 r = IPancakeRouter02(swapRouter);
@@ -329,10 +354,11 @@ contract SwapProxyImplementation is SwapProxyStorage {
         uint tokenBBalanceNew = IERC20(tokenB).balanceOf(address(this));
         uint swapAmount = tokenBBalanceNew - tokenBBalance;
         uint commAmount = swapAmount * swapCommission / 10000;
-        uint amount = swapAmount - commAmount;
 
-        TransferHelper.safeTransfer(tokenB, to, amount);
+        TransferHelper.safeTransfer(tokenB, to, (swapAmount - commAmount));
         TransferHelper.safeTransfer(tokenB, swapFeeAddress, commAmount);
+
+        emit swapEthForToken(tokenB, msg.value, swapAmount, to, deadline);
     }
 
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
@@ -354,10 +380,11 @@ contract SwapProxyImplementation is SwapProxyStorage {
         uint ethBalanceNew = address(this).balance;
         uint swapAmount = ethBalanceNew - ethBalance;
         uint commAmount = swapAmount * swapCommission / 10000;
-        uint amount = swapAmount - commAmount;
 
-        TransferHelper.safeTransferETH(to, amount);
+        TransferHelper.safeTransferETH(to, (swapAmount - commAmount));
         TransferHelper.safeTransferETH(swapFeeAddress, commAmount);
+
+        emit swapTokenForEth(tokenA, amountIn, swapAmount, to, deadline);
     }
 
 }
