@@ -20,6 +20,8 @@ contract Staking is Ownable {
     IERC20 public immutable stakingToken;
     IERC20 public immutable rewardsToken;
 
+    // todo: participation tracker
+
     // Duration of rewards to be paid out (in seconds)
     uint public duration;
 
@@ -101,6 +103,7 @@ contract Staking is Ownable {
         stakingToken.transferFrom(msg.sender, address(this), _amount);
         balanceOf[msg.sender] += _amount;
         totalSupply += _amount;
+        // todo: emit event
     }
 
     function unstake(uint _amount) external updateReward(msg.sender) {
