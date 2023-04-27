@@ -3,8 +3,39 @@ pragma solidity ^0.5.16;
 import "./PriceOracle.sol";
 import "./CErc20.sol";
 import "./EIP20Interface.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5.0/contracts/ownership/Ownable.sol";
-import "@chainlink/contracts/src/v0.5/interfaces/AggregatorV3Interface.sol";
+import "./openzeppelin-contracts-2.5.0/contracts/ownership/Ownable.sol";
+
+interface AggregatorV3Interface {
+
+  function decimals() external view returns (uint8);
+  function description() external view returns (string memory);
+  function version() external view returns (uint256);
+
+  // getRoundData and latestRoundData should both raise "No data present"
+  // if they do not have data to report, instead of returning unset values
+  // which could be misinterpreted as actual reported values.
+  function getRoundData(uint80 _roundId)
+    external
+    view
+    returns (
+      uint80 roundId,
+      int256 answer,
+      uint256 startedAt,
+      uint256 updatedAt,
+      uint80 answeredInRound
+    );
+  function latestRoundData()
+    external
+    view
+    returns (
+      uint80 roundId,
+      int256 answer,
+      uint256 startedAt,
+      uint256 updatedAt,
+      uint80 answeredInRound
+    );
+
+}
 
 contract SimplePriceOracleV2 is Ownable, PriceOracle {
     mapping (address => uint)    public prices;
@@ -13,18 +44,10 @@ contract SimplePriceOracleV2 is Ownable, PriceOracle {
     event PricePosted(address asset, uint previousPriceMantissa, uint requestedPriceMantissa, uint newPriceMantissa);
 
     constructor() public {
-        // USDT
-        prices[0x55d398326f99059fF775485246999027B3197955] = 1000000000000000000;
-        // BUSD
-        prices[0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56] = 1000000000000000000;
-
-        // Chainlink Feeds
-        // BNB
-        chainlinkFeed[0x0000000000000000000000000000000000000000] = 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE;
-        // USDT
-        chainlinkFeed[0x55d398326f99059fF775485246999027B3197955] = 0xB97Ad0E74fa7d920791E90258A6E2085088b4320;
-        // BUSD
-        chainlinkFeed[0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56] = 0xcBb98864Ef56E9042e7d2efef76141f15731B82f;
+        // // USDT
+        // prices[0x55d398326f99059fF775485246999027B3197955] = 1000000000000000000;
+        // // BUSD
+        // prices[0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56] = 1000000000000000000;
     }
 
     function getUnderlyingPrice(CToken cToken) public view returns (uint) {

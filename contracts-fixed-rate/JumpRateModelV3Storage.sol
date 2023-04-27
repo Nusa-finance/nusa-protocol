@@ -43,4 +43,6 @@ contract JumpRateModelV3Storage{
      * @notice constant to give more weight on the utilization for supply rate calculation
      */
     uint public supplyUtilConstant;
+
+    uint public fixedBorrowRate;
 }

@@ -1,11 +1,3 @@
-/**
- *Submitted for verification at BscScan.com on 2022-08-19
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2021-03-25
-*/
-
 // File: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5.0/contracts/GSN/Context.sol
 
 pragma solidity ^0.5.0;

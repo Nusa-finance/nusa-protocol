@@ -80,13 +80,15 @@ contract JumpRateModelV3 is InterestRateModel, JumpRateModelV3Storage {
      * @return The supply rate percentage per block as a mantissa (scaled by 1e18)
      */
     function getSupplyRate(uint cash, uint borrows, uint reserves, uint reserveFactorMantissa) public view returns (uint) {
-        uint util = utilizationRate(cash, borrows, reserves);
-        uint oneMinusReserveFactor = uint(1e18).sub(reserveFactorMantissa);
-        uint borrowRate = getBorrowRate(cash, borrows, reserves);
-        uint borrowRateMinusbaseRatePerBlock = borrowRate.sub(baseRatePerBlock);
-        uint rateToPool = borrowRateMinusbaseRatePerBlock.mul(oneMinusReserveFactor).div(1e18);
-        uint supplyUtil = supplyUtilConstant.add(util).mul(uint(1e18).sub(supplyUtilConstant)).div(1e18);
-        return rateToPool.mul(supplyUtil).div(1e18);
+        return 0;
+        
+        // uint util = utilizationRate(cash, borrows, reserves);
+        // uint oneMinusReserveFactor = uint(1e18).sub(reserveFactorMantissa);
+        // uint borrowRate = getBorrowRate(cash, borrows, reserves);
+        // uint borrowRateMinusbaseRatePerBlock = borrowRate.sub(baseRatePerBlock);
+        // uint rateToPool = borrowRateMinusbaseRatePerBlock.mul(oneMinusReserveFactor).div(1e18);
+        // uint supplyUtil = supplyUtilConstant.add(util).mul(uint(1e18).sub(supplyUtilConstant)).div(1e18);
+        // return rateToPool.mul(supplyUtil).div(1e18);
     }
 
     /**

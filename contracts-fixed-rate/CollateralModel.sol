@@ -1,6 +1,6 @@
 pragma solidity ^0.5.16;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v2.5.0/contracts/ownership/Ownable.sol";
+import "./openzeppelin-contracts-2.5.0/contracts/ownership/Ownable.sol";
 import "./CErc20.sol";
 import "./InterestRateModel.sol";
 
