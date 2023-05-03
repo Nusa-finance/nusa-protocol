@@ -5374,10 +5374,9 @@ contract CTokenFactory is Ownable {
         require(underlyingErc20.allowance(address(0), address(0)) >= 0, "underlying.allowance() is invalid");
 
         uint256 initialExchangeRateMantissa = 10**(18+uint256(underlyingDecimalErc20)-8)/50;
+        string memory name = string(abi.encodePacked(CErc20PrefixName, nameErc20));
         if ( underlying == comptroller.getCompAddress() ) {
-            string memory name = string(abi.encodePacked("Nusa Collateral"));
-        } else {
-            string memory name = string(abi.encodePacked(CErc20PrefixName, nameErc20));
+            name = string(abi.encodePacked("Nusa Collateral"));
         }
         string memory symbol = string(abi.encodePacked(CErc20PrefixSymbol, symbolErc20));
         
