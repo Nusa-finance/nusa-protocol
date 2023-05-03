@@ -12,8 +12,8 @@ contract CTokenFactory is Ownable {
     InterestRateModel cErc20InterestRateModel;
     address cErc20DelegatorImplementation;
     uint8 constant CErc20Decimal = 8;
-    string constant CErc20PrefixName = "Tadpole ";
-    string constant CErc20PrefixSymbol = "t";
+    string constant CErc20PrefixName = "Nusa ";
+    string constant CErc20PrefixSymbol = "n";
     bool constant public isFactory = true;
 
 
@@ -51,7 +51,11 @@ contract CTokenFactory is Ownable {
         require(underlyingErc20.allowance(address(0), address(0)) >= 0, "underlying.allowance() is invalid");
 
         uint256 initialExchangeRateMantissa = 10**(18+uint256(underlyingDecimalErc20)-8)/50;
-        string memory name = string(abi.encodePacked(CErc20PrefixName, nameErc20));
+        if ( underlying == comptroller.getCompAddress() ) {
+            string memory name = string(abi.encodePacked("Nusa Collateral"));
+        } else {
+            string memory name = string(abi.encodePacked(CErc20PrefixName, nameErc20));
+        }
         string memory symbol = string(abi.encodePacked(CErc20PrefixSymbol, symbolErc20));
         
         address payable admin_ = address(uint160(comptroller.admin()));
