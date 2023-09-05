@@ -7,7 +7,50 @@ import "./PriceOracle.sol";
 import "./ComptrollerInterface.sol";
 import "./ComptrollerStorage.sol";
 import "./Unitroller.sol";
-import "./Governance/Tad.sol";
+
+// interface
+contract Nusa {
+    string public constant name = "Nusa Token";
+    string public constant symbol = "NUSA";
+    uint8 public constant decimals = 18;
+    uint public constant _cap = 200000e18;
+    uint public totalSupply = 0; // initiate with 0 TAD for BSC
+    mapping (address => bool) public minters;
+    mapping (address => mapping (address => uint96)) internal allowances;
+    mapping (address => uint96) internal balances;
+    mapping (address => address) public delegates;
+    struct Checkpoint {
+        uint32 fromBlock;
+        uint96 votes;
+    }
+    mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
+    mapping (address => uint32) public numCheckpoints;
+    bytes32 public constant DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
+    bytes32 public constant DELEGATION_TYPEHASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
+    mapping (address => uint) public nonces;
+    event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
+    event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event Approval(address indexed owner, address indexed spender, uint256 amount);
+    function allowance(address account, address spender) external view returns (uint);
+    function approve(address spender, uint rawAmount) external returns (bool);
+    function balanceOf(address account) external view returns (uint);
+    function transfer(address dst, uint rawAmount) external returns (bool);
+    function transferFrom(address src, address dst, uint rawAmount) external returns (bool);
+    function delegate(address delegatee) public;
+    function delegateBySig(address delegatee, uint nonce, uint expiry, uint8 v, bytes32 r, bytes32 s) public;
+    function getCurrentVotes(address account) external view returns (uint96);
+    function getPriorVotes(address account, uint blockNumber) public view returns (uint96);
+    function _delegate(address delegator, address delegatee) internal;
+    function _transferTokens(address src, address dst, uint96 amount) internal;
+    function _moveDelegates(address srcRep, address dstRep, uint96 amount) internal;
+    function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint96 oldVotes, uint96 newVotes) internal ;
+    function safe32(uint n, string memory errorMessage) internal pure returns (uint32);
+    function safe96(uint n, string memory errorMessage) internal pure returns (uint96);
+    function add96(uint96 a, uint96 b, string memory errorMessage) internal pure returns (uint96);
+    function sub96(uint96 a, uint96 b, string memory errorMessage) internal pure returns (uint96);
+    function getChainId() internal pure returns (uint);
+}
 
 /**
  * @title Compound's Comptroller Contract
@@ -1015,7 +1058,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
 
         require(createMarketIsEnabled == true, "disabled");
 
-        Tad comp = Tad(getCompAddress());
+        Nusa comp = Nusa(getCompAddress());
         comp.transferFrom(msg.sender, address(0), newMarketCompFee);
 
         address cerc20Delegator = cTokenFactory.createCErc20Delegator(_erc20Address, this);
@@ -1273,14 +1316,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      */
     function updateCompSupplyIndex(address cToken) internal {
         CompMarketState storage supplyState = compSupplyState[cToken];
-
-        uint supplySpeed;
-        if ( cToken == getCompAddress() ) {
-            supplySpeed = compSpeeds[cToken]; // disable nusa borrow reward
-        } else {
-            supplySpeed = div_(mul_(compSpeeds[cToken], 70), 100); // supplySpeed = compSpeed * 70%
-        }
-
+        uint supplySpeed = div_(mul_(compSpeeds[cToken], 70), 100); //supplySpeed = compSpeed * 70%
         uint blockNumber = getBlockNumber();
         uint deltaBlocks = sub_(blockNumber, uint(supplyState.block));
         if (deltaBlocks > 0 && supplySpeed > 0) {
@@ -1303,15 +1339,8 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      */
     function updateCompBorrowIndex(address cToken, Exp memory marketBorrowIndex) internal {
         CompMarketState storage borrowState = compBorrowState[cToken];
-
-        uint borrowSpeed;
-        if ( cToken == getCompAddress() ) {
-            borrowSpeed = 0; // disable nusa borrow reward
-        } else {
-            borrowSpeed = div_(mul_(compSpeeds[cToken], 30), 100); // borrowSpeed = compSpeed * 30%
-            // borrowSpeed = 0;  //temporary set borrowSpeed to 0
-        }
-
+        uint borrowSpeed = div_(mul_(compSpeeds[cToken], 30), 100); //borrowSpeed = compSpeed * 30%
+        //uint borrowSpeed = 0;  //temporary set borrowSpeed to 0
         uint blockNumber = getBlockNumber();
         uint deltaBlocks = sub_(blockNumber, uint(borrowState.block));
         if (deltaBlocks > 0 && borrowSpeed > 0) {
@@ -1382,7 +1411,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      */
     function transferComp(address user, uint userAccrued, uint threshold) internal returns (uint) {
         if (userAccrued >= threshold && userAccrued > 0) {
-            Tad comp = Tad(getCompAddress());
+            Nusa comp = Nusa(getCompAddress());
             uint compRemaining = comp.balanceOf(address(this)) * 10;
             if (userAccrued <= compRemaining) {
                 comp.transfer(user, userAccrued / 10);

@@ -13,7 +13,7 @@ import "./Governance/Tad.sol";
  * @title Compound's Comptroller Contract
  * @author Compound
  */
-contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, ComptrollerErrorReporter, Exponential {
+contract ComptrollerG3 is ComptrollerV3Storage, ComptrollerInterface, ComptrollerErrorReporter, Exponential {
     /// @notice Emitted when an admin supports a market
     event MarketListed(CToken cToken);
 
@@ -27,7 +27,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
     event NewCloseFactor(uint oldCloseFactorMantissa, uint newCloseFactorMantissa);
 
     /// @notice Emitted when a collateral factor is changed by admin
-    // event NewCollateralFactor(CToken cToken, uint oldCollateralFactorMantissa, uint newCollateralFactorMantissa);
+    event NewCollateralFactor(CToken cToken, uint oldCollateralFactorMantissa, uint newCollateralFactorMantissa);
 
     /// @notice Emitted when liquidation incentive is changed by admin
     event NewLiquidationIncentive(uint oldLiquidationIncentiveMantissa, uint newLiquidationIncentiveMantissa);
@@ -95,7 +95,9 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @return A dynamic list with the assets the account has entered
      */
     function getAssetsIn(address account) external view returns (CToken[] memory) {
-        return accountAssets[account];
+        CToken[] memory assetsIn = accountAssets[account];
+
+        return assetsIn;
     }
 
     /**
@@ -114,9 +116,10 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @return Success indicator for whether each corresponding market was entered
      */
     function enterMarkets(address[] memory cTokens) public returns (uint[] memory) {
+        uint len = cTokens.length;
 
-        uint[] memory results = new uint[](cTokens.length);
-        for (uint i = 0; i < cTokens.length; i++) {
+        uint[] memory results = new uint[](len);
+        for (uint i = 0; i < len; i++) {
             CToken cToken = CToken(cTokens[i]);
 
             results[i] = uint(addToMarketInternal(cToken, msg.sender));
@@ -165,7 +168,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
     /**
      * @notice Removes asset from sender's account liquidity calculation
      * @dev Sender must not have an outstanding borrow balance in the asset,
-     *  or be providing necessary collateral for an outstanding borrow.
+     *  or be providing neccessary collateral for an outstanding borrow.
      * @param cTokenAddress The address of the asset to be removed
      * @return Whether or not the account successfully exited the market
      */
@@ -539,7 +542,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         address borrower,
         uint seizeTokens) external returns (uint) {
         // Pausing is a very serious situation - we revert to sound the alarms
-        require(!seizeGuardianPaused, "paused");
+        require(!seizeGuardianPaused, "seize is paused");
 
         // Shh - currently unused
         seizeTokens;
@@ -727,7 +730,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
             if (oErr != 0) { // semi-opaque error code, we assume NO_ERROR == 0 is invariant between upgrades
                 return (Error.SNAPSHOT_ERROR, 0, 0);
             }
-            vars.collateralFactor = Exp({mantissa: getcollateralFactorMantissa(address(asset))});
+            vars.collateralFactor = Exp({mantissa: markets[address(asset)].collateralFactorMantissa});
             vars.exchangeRate = Exp({mantissa: vars.exchangeRateMantissa});
 
             // Get the normalized price of the asset
@@ -895,40 +898,40 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
       * @param newCollateralFactorMantissa The new collateral factor, scaled by 1e18
       * @return uint 0=success, otherwise a failure. (See ErrorReporter for details)
       */
-    // function _setCollateralFactor(CToken cToken, uint newCollateralFactorMantissa) external returns (uint) {
-    //     // Check caller is admin
-    //     if (msg.sender != admin) {
-    //         return fail(Error.UNAUTHORIZED, FailureInfo.SET_COLLATERAL_FACTOR_OWNER_CHECK);
-    //     }
+    function _setCollateralFactor(CToken cToken, uint newCollateralFactorMantissa) external returns (uint) {
+        // Check caller is admin
+        if (msg.sender != admin) {
+            return fail(Error.UNAUTHORIZED, FailureInfo.SET_COLLATERAL_FACTOR_OWNER_CHECK);
+        }
 
-    //     // Verify market is listed
-    //     Market storage market = markets[address(cToken)];
-    //     if (!market.isListed) {
-    //         return fail(Error.MARKET_NOT_LISTED, FailureInfo.SET_COLLATERAL_FACTOR_NO_EXISTS);
-    //     }
+        // Verify market is listed
+        Market storage market = markets[address(cToken)];
+        if (!market.isListed) {
+            return fail(Error.MARKET_NOT_LISTED, FailureInfo.SET_COLLATERAL_FACTOR_NO_EXISTS);
+        }
 
-    //     Exp memory newCollateralFactorExp = Exp({mantissa: newCollateralFactorMantissa});
+        Exp memory newCollateralFactorExp = Exp({mantissa: newCollateralFactorMantissa});
 
-    //     // Check collateral factor <= 0.9
-    //     Exp memory highLimit = Exp({mantissa: collateralFactorMaxMantissa});
-    //     if (lessThanExp(highLimit, newCollateralFactorExp)) {
-    //         return fail(Error.INVALID_COLLATERAL_FACTOR, FailureInfo.SET_COLLATERAL_FACTOR_VALIDATION);
-    //     }
+        // Check collateral factor <= 0.9
+        Exp memory highLimit = Exp({mantissa: collateralFactorMaxMantissa});
+        if (lessThanExp(highLimit, newCollateralFactorExp)) {
+            return fail(Error.INVALID_COLLATERAL_FACTOR, FailureInfo.SET_COLLATERAL_FACTOR_VALIDATION);
+        }
 
-    //     // If collateral factor != 0, fail if price == 0
-    //     if (newCollateralFactorMantissa != 0 && oracle.getUnderlyingPrice(cToken) == 0) {
-    //         return fail(Error.PRICE_ERROR, FailureInfo.SET_COLLATERAL_FACTOR_WITHOUT_PRICE);
-    //     }
+        // If collateral factor != 0, fail if price == 0
+        if (newCollateralFactorMantissa != 0 && oracle.getUnderlyingPrice(cToken) == 0) {
+            return fail(Error.PRICE_ERROR, FailureInfo.SET_COLLATERAL_FACTOR_WITHOUT_PRICE);
+        }
 
-    //     // Set market's collateral factor to new collateral factor, remember old value
-    //     uint oldCollateralFactorMantissa = market.collateralFactorMantissa;
-    //     market.collateralFactorMantissa = newCollateralFactorMantissa;
+        // Set market's collateral factor to new collateral factor, remember old value
+        uint oldCollateralFactorMantissa = market.collateralFactorMantissa;
+        market.collateralFactorMantissa = newCollateralFactorMantissa;
 
-    //     // Emit event with asset, old collateral factor, and new collateral factor
-    //     emit NewCollateralFactor(cToken, oldCollateralFactorMantissa, newCollateralFactorMantissa);
+        // Emit event with asset, old collateral factor, and new collateral factor
+        emit NewCollateralFactor(cToken, oldCollateralFactorMantissa, newCollateralFactorMantissa);
 
-    //     return uint(Error.NO_ERROR);
-    // }
+        return uint(Error.NO_ERROR);
+    }
 
     /**
       * @notice Sets maxAssets which controls how many markets can be entered
@@ -985,88 +988,6 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         return uint(Error.NO_ERROR);
     }
 
-    function _enableCreateMarket() external returns (uint){
-        // Check caller is admin
-        if (msg.sender != admin) {
-            return fail(Error.UNAUTHORIZED, FailureInfo.SET_TOGGLE_CREATE_MARKET_OWNER_CHECK);
-        }
-
-        createMarketIsEnabled = true;
-    }
-
-
-    function _disableCreateMarket() external returns (uint){
-        // Check caller is admin
-        if (msg.sender != admin) {
-            return fail(Error.UNAUTHORIZED, FailureInfo.SET_TOGGLE_CREATE_MARKET_OWNER_CHECK);
-        }
-
-        createMarketIsEnabled = false;
-    }
-
-    /**
-      * @notice create market from ERC20 underlying and add it to the markets mapping and set it as listed
-      * @dev function to create cErc20, set isListed and add support for the market
-      * @param _erc20Address The address of underlying erc20 to list
-      * @return uint 0=success, otherwise a failure. (See enum Error for details)
-      */
-
-    function createMarket(address _erc20Address) external returns (uint){
-
-        require(createMarketIsEnabled == true, "disabled");
-
-        Tad comp = Tad(getCompAddress());
-        comp.transferFrom(msg.sender, address(0), newMarketCompFee);
-
-        address cerc20Delegator = cTokenFactory.createCErc20Delegator(_erc20Address, this);
-        CToken cToken = CToken(cerc20Delegator);
-
-        cToken.isCToken(); // Sanity check to make sure its really a CToken
-
-        markets[address(cToken)] = Market({isListed: true, isComped: false});
-
-        _addMarketInternal(address(cToken));
-
-        emit MarketListed(cToken);
-
-        return uint(Error.NO_ERROR);
-    }
-
-    /**
-      * @notice set newMarketCompFee
-      * @dev Admin function to set newMarketCompFee
-      * @param _newMarketCompFee uint256 to set newMarketCompFee
-      */
-    function _setNewMarketCompFee(uint256 _newMarketCompFee) external returns (uint){
-        // Check caller is admin
-        if (msg.sender != admin) {
-            return fail(Error.UNAUTHORIZED, FailureInfo.SET_NEW_MARKET_OWNER_CHECK);
-        }
-
-        require(_newMarketCompFee > 0, "_newMarketCompFee is empty");
-        newMarketCompFee = _newMarketCompFee;
-
-        return uint(Error.NO_ERROR);
-    }
-
-    /**
-      * @notice set factory
-      * @dev Admin function to set factory
-      * @param _factory address of the new factory
-      */
-    function _setFactory(CTokenFactory _factory) external returns (uint){
-        // Check caller is admin
-        if (msg.sender != admin) {
-            return fail(Error.UNAUTHORIZED, FailureInfo.SET_FACTORY_OWNER_CHECK);
-        }
-
-        require(_factory.isFactory() == true, "invalid factory");
-        
-        cTokenFactory = _factory;
-
-        return uint(Error.NO_ERROR);
-    }
-
     /**
       * @notice Add the market to the markets mapping and set it as listed
       * @dev Admin function to set isListed and add support for the market
@@ -1084,7 +1005,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
-        markets[address(cToken)] = Market({isListed: true, isComped: false});
+        markets[address(cToken)] = Market({isListed: true, isComped: false, collateralFactorMantissa: 0});
 
         _addMarketInternal(address(cToken));
 
@@ -1097,18 +1018,6 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         for (uint i = 0; i < allMarkets.length; i ++) {
             require(allMarkets[i] != CToken(cToken), "market already added");
         }
-        
-        //underlying checking and recording not for tadBNB
-        if(cToken != 0x3f01C2b4A090Fa8BD36e87B78e0d75e37d2d5D90){
-
-            //make sure the same underlying only be added once
-            for (uint i = 0; i < allUnderlying.length; i ++) {
-                require(allUnderlying[i] != CErc20(cToken).underlying(), "underlying already added");
-            }
-            allUnderlying.push(CErc20(cToken).underlying());
-        
-        }
-        
         allMarkets.push(CToken(cToken));
     }
 
@@ -1135,9 +1044,9 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
     }
 
     function _setMintPaused(CToken cToken, bool state) public returns (bool) {
-        require(markets[address(cToken)].isListed, "market non listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "unauthorized");
-        require(msg.sender == admin || state == true, "unauthorized");
+        require(markets[address(cToken)].isListed, "cannot pause a market that is not listed");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(msg.sender == admin || state == true, "only admin can unpause");
 
         mintGuardianPaused[address(cToken)] = state;
         emit ActionPaused(cToken, "Mint", state);
@@ -1145,9 +1054,9 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
     }
 
     function _setBorrowPaused(CToken cToken, bool state) public returns (bool) {
-        require(markets[address(cToken)].isListed, "market non listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "unauthorized");
-        require(msg.sender == admin || state == true, "unauthorized");
+        require(markets[address(cToken)].isListed, "cannot pause a market that is not listed");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(msg.sender == admin || state == true, "only admin can unpause");
 
         borrowGuardianPaused[address(cToken)] = state;
         emit ActionPaused(cToken, "Borrow", state);
@@ -1155,8 +1064,8 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
     }
 
     function _setTransferPaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "unauthorized");
-        require(msg.sender == admin || state == true, "unauthorized");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(msg.sender == admin || state == true, "only admin can unpause");
 
         transferGuardianPaused = state;
         emit ActionPaused("Transfer", state);
@@ -1164,17 +1073,34 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
     }
 
     function _setSeizePaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "unauthorized");
-        require(msg.sender == admin || state == true, "unauthorized");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(msg.sender == admin || state == true, "only admin can unpause");
 
         seizeGuardianPaused = state;
         emit ActionPaused("Seize", state);
         return state;
     }
 
-    function _become(Unitroller unitroller) public {
-        require(msg.sender == unitroller.admin(), "unauthorized");
-        require(unitroller._acceptImplementation() == 0, "unauthorized");
+    function _become(Unitroller unitroller, uint compRate_, address[] memory compMarketsToAdd, address[] memory otherMarketsToAdd) public {
+        require(msg.sender == unitroller.admin(), "only unitroller admin can change brains");
+        require(unitroller._acceptImplementation() == 0, "change not authorized");
+
+        ComptrollerG3(address(unitroller))._becomeG3(compRate_, compMarketsToAdd, otherMarketsToAdd);
+    }
+
+    function _becomeG3(uint compRate_, address[] memory compMarketsToAdd, address[] memory otherMarketsToAdd) public {
+        require(msg.sender == comptrollerImplementation, "only brains can become itself");
+
+        for (uint i = 0; i < compMarketsToAdd.length; i++) {
+            _addMarketInternal(address(compMarketsToAdd[i]));
+        }
+
+        for (uint i = 0; i < otherMarketsToAdd.length; i++) {
+            _addMarketInternal(address(otherMarketsToAdd[i]));
+        }
+
+        _setCompRate(compRate_);
+        _addCompMarkets(compMarketsToAdd);
     }
 
     /**
@@ -1187,57 +1113,9 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
     /*** Comp Distribution ***/
 
     /**
-     * @notice Admin function to update COMP speeds for a specific market
-     * @param cToken The market to enter
-     * @param compSpeedMantissa compRate to be distributed to this market, scaled by 1e18
-     * @return uint 0=success, otherwise a failure. (See enum Error for details)
-     */
-    function _setCompSpeed(CToken cToken, uint256 compSpeedMantissa) public  returns (uint){
-        // Check caller is admin
-        if (msg.sender != admin) {
-            return fail(Error.UNAUTHORIZED, FailureInfo.SET_COMP_SPEED_OWNER_CHECK);
-        }
-
-        require(markets[address(cToken)].isListed == true, "not listed");
-        require(markets[address(cToken)].isComped == true, "not comped");
-
-        refreshCompSpeedsInternal();
-
-        uint256 newSpeed = compSpeedMantissa;
-
-        compSpeeds[address(cToken)] = newSpeed;
-
-        uint256 newTotalCompRate_;
-
-        for (uint i = 0; i < allMarkets.length; i++) {
-            if (markets[address(allMarkets[i])].isComped) {
-                newTotalCompRate_ += compSpeeds[address(allMarkets[i])];
-            }
-        }
-        
-        uint oldRate = compRate;
-        compRate = newTotalCompRate_;
-
-        refreshCompSpeedsInternal();
-
-        emit NewCompRate(oldRate, compRate);
-        emit CompSpeedUpdated(cToken, newSpeed);
-        
-        return uint(Error.NO_ERROR);
-    }
-
-    /**
      * @notice Recalculate and update COMP speeds for all COMP markets
      */
     function refreshCompSpeeds() public {
-        require(msg.sender == tx.origin, "external only");
-        refreshCompSpeedsInternal();
-    }
-
-    function refreshCompSpeedsInternal() internal {
-        
-        //temporary disabled
-
         CToken[] memory allMarkets_ = allMarkets;
 
         for (uint i = 0; i < allMarkets_.length; i++) {
@@ -1247,24 +1125,25 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
             updateCompBorrowIndex(address(cToken), borrowIndex);
         }
 
-        // Exp memory totalUtility = Exp({mantissa: 0});
-        // Exp[] memory utilities = new Exp[](allMarkets_.length);
-        // for (uint i = 0; i < allMarkets_.length; i++) {
-        //     CToken cToken = allMarkets_[i];
-        //     if (markets[address(cToken)].isComped) {
-        //         Exp memory assetPrice = Exp({mantissa: oracle.getUnderlyingPrice(cToken)});
-        //         Exp memory utility = mul_(assetPrice, cToken.totalBorrows());
-        //         utilities[i] = utility;
-        //         totalUtility = add_(totalUtility, utility);
-        //     }
-        // }
+        Exp memory totalUtility = Exp({mantissa: 0});
+        Exp[] memory utilities = new Exp[](allMarkets_.length);
+        for (uint i = 0; i < allMarkets_.length; i++) {
+            CToken cToken = allMarkets_[i];
+            if (markets[address(cToken)].isComped) {
+                Exp memory assetPrice = Exp({mantissa: oracle.getUnderlyingPrice(cToken)});
+                Exp memory interestPerBlock = mul_(Exp({mantissa: cToken.borrowRatePerBlock()}), cToken.totalBorrows());
+                Exp memory utility = mul_(interestPerBlock, assetPrice);
+                utilities[i] = utility;
+                totalUtility = add_(totalUtility, utility);
+            }
+        }
 
-        // for (uint i = 0; i < allMarkets_.length; i++) {
-        //     CToken cToken = allMarkets[i];
-        //     uint newSpeed = totalUtility.mantissa > 0 ? mul_(compRate, div_(utilities[i], totalUtility)) : 0;
-        //     compSpeeds[address(cToken)] = newSpeed;
-        //     emit CompSpeedUpdated(cToken, newSpeed);
-        // }
+        for (uint i = 0; i < allMarkets_.length; i++) {
+            CToken cToken = allMarkets[i];
+            uint newSpeed = totalUtility.mantissa > 0 ? mul_(compRate, div_(utilities[i], totalUtility)) : 0;
+            compSpeeds[address(cToken)] = newSpeed;
+            emit CompSpeedUpdated(cToken, newSpeed);
+        }
     }
 
     /**
@@ -1273,14 +1152,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      */
     function updateCompSupplyIndex(address cToken) internal {
         CompMarketState storage supplyState = compSupplyState[cToken];
-
-        uint supplySpeed;
-        if ( cToken == getCompAddress() ) {
-            supplySpeed = compSpeeds[cToken]; // disable nusa borrow reward
-        } else {
-            supplySpeed = div_(mul_(compSpeeds[cToken], 70), 100); // supplySpeed = compSpeed * 70%
-        }
-
+        uint supplySpeed = compSpeeds[cToken];
         uint blockNumber = getBlockNumber();
         uint deltaBlocks = sub_(blockNumber, uint(supplyState.block));
         if (deltaBlocks > 0 && supplySpeed > 0) {
@@ -1303,15 +1175,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      */
     function updateCompBorrowIndex(address cToken, Exp memory marketBorrowIndex) internal {
         CompMarketState storage borrowState = compBorrowState[cToken];
-
-        uint borrowSpeed;
-        if ( cToken == getCompAddress() ) {
-            borrowSpeed = 0; // disable nusa borrow reward
-        } else {
-            borrowSpeed = div_(mul_(compSpeeds[cToken], 30), 100); // borrowSpeed = compSpeed * 30%
-            // borrowSpeed = 0;  //temporary set borrowSpeed to 0
-        }
-
+        uint borrowSpeed = compSpeeds[cToken];
         uint blockNumber = getBlockNumber();
         uint deltaBlocks = sub_(blockNumber, uint(borrowState.block));
         if (deltaBlocks > 0 && borrowSpeed > 0) {
@@ -1382,10 +1246,10 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      */
     function transferComp(address user, uint userAccrued, uint threshold) internal returns (uint) {
         if (userAccrued >= threshold && userAccrued > 0) {
-            Tad comp = Tad(getCompAddress());
-            uint compRemaining = comp.balanceOf(address(this)) * 10;
+            Comp comp = Comp(getCompAddress());
+            uint compRemaining = comp.balanceOf(address(this));
             if (userAccrued <= compRemaining) {
-                comp.transfer(user, userAccrued / 10);
+                comp.transfer(user, userAccrued);
                 return 0;
             }
         }
@@ -1421,7 +1285,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
     function claimComp(address[] memory holders, CToken[] memory cTokens, bool borrowers, bool suppliers) public {
         for (uint i = 0; i < cTokens.length; i++) {
             CToken cToken = cTokens[i];
-            require(markets[address(cToken)].isListed, "market not listed");
+            require(markets[address(cToken)].isListed, "market must be listed");
             if (borrowers == true) {
                 Exp memory borrowIndex = Exp({mantissa: cToken.borrowIndex()});
                 updateCompBorrowIndex(address(cToken), borrowIndex);
@@ -1444,36 +1308,34 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @notice Set the amount of COMP distributed per block
      * @param compRate_ The amount of COMP wei per block to distribute
      */
-    // function _setCompRate(uint compRate_) public {
-        // compRate_; //zzz
-        // revert("temporary disabled");
-        // require(adminOrInitializing(), "only admin can change comp rate");
+    function _setCompRate(uint compRate_) public {
+        require(adminOrInitializing(), "only admin can change comp rate");
 
-        // uint oldRate = compRate;
-        // compRate = compRate_;
-        // emit NewCompRate(oldRate, compRate_);
+        uint oldRate = compRate;
+        compRate = compRate_;
+        emit NewCompRate(oldRate, compRate_);
 
-        // refreshCompSpeedsInternal();
-    // }
+        refreshCompSpeeds();
+    }
 
     /**
      * @notice Add markets to compMarkets, allowing them to earn COMP in the flywheel
      * @param cTokens The addresses of the markets to add
      */
     function _addCompMarkets(address[] memory cTokens) public {
-        require(adminOrInitializing(), "unauthorized");
+        require(adminOrInitializing(), "only admin can add comp market");
 
         for (uint i = 0; i < cTokens.length; i++) {
             _addCompMarketInternal(cTokens[i]);
         }
 
-        refreshCompSpeedsInternal();
+        refreshCompSpeeds();
     }
 
     function _addCompMarketInternal(address cToken) internal {
         Market storage market = markets[cToken];
-        require(market.isListed == true, "market not listed");
-        require(market.isComped == false, "already added");
+        require(market.isListed == true, "comp market is not listed");
+        require(market.isComped == false, "comp market already added");
 
         market.isComped = true;
         emit MarketComped(CToken(cToken), true);
@@ -1498,15 +1360,15 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @param cToken The address of the market to drop
      */
     function _dropCompMarket(address cToken) public {
-        require(msg.sender == admin, "unauthorized");
+        require(msg.sender == admin, "only admin can drop comp market");
 
         Market storage market = markets[cToken];
-        require(market.isComped == true, "not comp market");
+        require(market.isComped == true, "market is not a comp market");
 
         market.isComped = false;
         emit MarketComped(CToken(cToken), false);
 
-        refreshCompSpeedsInternal();
+        refreshCompSpeeds();
     }
 
     /**
@@ -1518,33 +1380,6 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         return allMarkets;
     }
 
-    /**
-     * @notice Return collateralFactor of a cToken
-     * @dev get the collateralFactor stored in CollateralModel
-     * @param cToken The address of the market to drop
-     * @return uint collateralFactor
-     */
-    function getcollateralFactorMantissa(address cToken) public view returns(uint){
-        return collateralModel.getCollateral(cToken);
-    }
-
-    /**
-     * @notice admin function to set collateralModel
-     * @dev set collateralModel
-     * @param _collateralModel address of collateralModel
-     */
-    function _setCollateralModel(CollateralModel _collateralModel) public returns(uint){
-        // Check caller is admin
-        if (msg.sender != admin) {
-            return fail(Error.UNAUTHORIZED, FailureInfo.SET_COLLATERAL_MODEL_OWNER_CHECK);
-        }
-
-        require(_collateralModel.isCollateralModel() == true, "invalid CollateralModel");
-
-        collateralModel = _collateralModel;
-        
-    }
-
     function getBlockNumber() public view returns (uint) {
         return block.number;
     }
@@ -1553,7 +1388,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @notice Return the address of the COMP token
      * @return The address of COMP
      */
-    function getCompAddress() public pure returns (address) {
-        return 0xe11F1D5EEE6BE945BeE3fa20dBF46FeBBC9F4A19;
+    function getCompAddress() public view returns (address) {
+        return 0xc00e94Cb662C3520282E6f5717214004A7f26888;
     }
 }
