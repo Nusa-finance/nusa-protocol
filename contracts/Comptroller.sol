@@ -1273,7 +1273,14 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      */
     function updateCompSupplyIndex(address cToken) internal {
         CompMarketState storage supplyState = compSupplyState[cToken];
-        uint supplySpeed = div_(mul_(compSpeeds[cToken], 70), 100); //supplySpeed = compSpeed * 70%
+
+        uint supplySpeed;
+        if ( cToken == getCompAddress() ) {
+            supplySpeed = compSpeeds[cToken]; // disable nusa borrow reward
+        } else {
+            supplySpeed = div_(mul_(compSpeeds[cToken], 70), 100); // supplySpeed = compSpeed * 70%
+        }
+
         uint blockNumber = getBlockNumber();
         uint deltaBlocks = sub_(blockNumber, uint(supplyState.block));
         if (deltaBlocks > 0 && supplySpeed > 0) {
@@ -1296,8 +1303,15 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      */
     function updateCompBorrowIndex(address cToken, Exp memory marketBorrowIndex) internal {
         CompMarketState storage borrowState = compBorrowState[cToken];
-        uint borrowSpeed = div_(mul_(compSpeeds[cToken], 30), 100); //borrowSpeed = compSpeed * 30%
-        //uint borrowSpeed = 0;  //temporary set borrowSpeed to 0
+
+        uint borrowSpeed;
+        if ( cToken == getCompAddress() ) {
+            borrowSpeed = 0; // disable nusa borrow reward
+        } else {
+            borrowSpeed = div_(mul_(compSpeeds[cToken], 30), 100); // borrowSpeed = compSpeed * 30%
+            // borrowSpeed = 0;  //temporary set borrowSpeed to 0
+        }
+
         uint blockNumber = getBlockNumber();
         uint deltaBlocks = sub_(blockNumber, uint(borrowState.block));
         if (deltaBlocks > 0 && borrowSpeed > 0) {
@@ -1540,6 +1554,6 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @return The address of COMP
      */
     function getCompAddress() public pure returns (address) {
-        return 0x9f7229aF0c4b9740e207Ea283b9094983f78ba04;
+        return 0xe11F1D5EEE6BE945BeE3fa20dBF46FeBBC9F4A19;
     }
 }

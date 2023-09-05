@@ -4647,7 +4647,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @return The address of COMP
      */
     function getCompAddress() public pure returns (address) {
-        return 0xC71C0d92A98b47B64Cb31F0507Aaf8E9C0367116;
+        return 0xe11F1D5EEE6BE945BeE3fa20dBF46FeBBC9F4A19;
     }
 }
 
@@ -5368,7 +5368,7 @@ contract CTokenFactory is Ownable {
 
         require(bytes(nameErc20).length != 0, "underlying.name() is empty");
         require(bytes(symbolErc20).length != 0, "underlying.symbol() is empty");
-        require(underlyingDecimalErc20 > 0, "underlying.decimals() is empty");
+        // require(underlyingDecimalErc20 > 0, "underlying.decimals() is empty");
         require(underlyingErc20.totalSupply() > 0, "underlying.totalSupply() is empty");
         require(underlyingErc20.balanceOf(address(0)) >= 0, "underlying.balanceOf() is invalid");
         require(underlyingErc20.allowance(address(0), address(0)) >= 0, "underlying.allowance() is invalid");
