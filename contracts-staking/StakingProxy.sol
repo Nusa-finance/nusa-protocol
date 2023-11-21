@@ -11,12 +11,14 @@ contract StakingStorage {
     address public stakeToken;
 
     uint public stakeCount;
+    uint public unbondingPeriod;
 
     struct Stake {
         uint stakeId;
         uint stakeType;
         address staker;
         bool isActive;
+        bool isUnbonding;
 
         uint stakeAmount;
         uint rewardAmount;
@@ -26,6 +28,7 @@ contract StakingStorage {
         uint claimedTimestamp;
 
         uint unlockTimestamp;
+        uint unbondingTimestamp;
     }
 
     // list of stakes
@@ -47,18 +50,23 @@ contract StakeProxy is StakingStorage {
         // stakeToken = 0x9f215Fc670154c19f1cc1A08E3464304De719390; // IDRX Mumbai
         stakeToken = 0x3AdafCD334157b74A97027eE5d2faa9cc39feaDE; // IDRX BSC Testnet
 
+        // unbondingPeriod = 432000; // 5 days
+        unbondingPeriod = 360; // 6 minutes
+
         // insert stakes index 0
         Stake memory _stake = Stake({
             stakeId: 0,
             stakeType: 0,
             staker: address(0),
             isActive: false,
+            isUnbonding: false,
             stakeAmount: 0,
             rewardAmount: 0,
             createdTimestamp: 0,
             claimedAmount: 0,
             claimedTimestamp: 0,
-            unlockTimestamp: 0
+            unlockTimestamp: 0,
+            unbondingTimestamp: 0
         });
         stakes.push(_stake);
 
