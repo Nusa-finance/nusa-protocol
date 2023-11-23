@@ -13,6 +13,15 @@ contract StakingStorage {
     uint public stakeCount;
     uint public unbondingPeriod;
 
+    struct StakeType {
+        uint rewardModifier;
+        uint durationModifier;
+        uint duration;
+    }
+
+    // list of stake types
+    StakeType[] public stakeTypes;
+
     struct Stake {
         uint stakeId;
         uint stakeType;
@@ -52,6 +61,47 @@ contract StakeProxy is StakingStorage {
 
         // unbondingPeriod = 432000; // 5 days
         unbondingPeriod = 360; // 6 minutes
+
+        // setup default stake types
+        stakeTypes.push(StakeType({
+            // Type 0 
+            // placeholder
+            rewardModifier: 0,
+            durationModifier: 0,
+            duration: 0
+        }));
+        stakeTypes.push(StakeType({
+            // Type 1 
+            // lock 1 month; APY: 3.8%
+            rewardModifier: 380,
+            durationModifier: 12,
+            // duration: 2630000
+            duration: 600 // testing
+        }));
+        stakeTypes.push(StakeType({
+            // Type 2 
+            // lock 3 months; APY: 4%
+            rewardModifier: 400,
+            durationModifier: 4,
+            // duration: 7890000
+            duration: 1800 // testing
+        }));
+        stakeTypes.push(StakeType({
+            // Type 3 
+            // lock 6 months; APY: 4.32%
+            rewardModifier: 432,
+            durationModifier: 2,
+            // duration: 15780000
+            duration: 3600 // testing
+        }));
+        stakeTypes.push(StakeType({
+            // Type 4 
+            // lock 1 year; APY: 4.56%
+            rewardModifier: 456,
+            durationModifier: 1,
+            // duration: 31560000
+            duration: 7200 // testing
+        }));
 
         // insert stakes index 0
         Stake memory _stake = Stake({

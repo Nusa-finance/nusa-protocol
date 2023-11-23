@@ -29,6 +29,15 @@ contract StakingStorage {
     uint public stakeCount;
     uint public unbondingPeriod;
 
+    struct StakeType {
+        uint rewardModifier;
+        uint durationModifier;
+        uint duration;
+    }
+
+    // list of stake types
+    StakeType[] public stakeTypes;
+
     struct Stake {
         uint stakeId;
         uint stakeType;
@@ -87,6 +96,12 @@ contract StakingImplementation is StakingStorage {
         uint principalAmount,
         uint claimedTimestamp
     );
+    event stakeTypeModified(
+        uint index,
+        uint rewardModifier,
+        uint durationModifier,
+        uint duration
+    );
     event newUnbondingPeriod(uint p);
 
     // getters
@@ -104,6 +119,15 @@ contract StakingImplementation is StakingStorage {
         unbondingPeriod = p;
         emit newUnbondingPeriod(p);
     }
+    function setStakeType(uint index, uint rewardModifier, uint durationModifier, uint duration) external {
+        require(msg.sender == owner, "UNAUTHORIZED");
+        stakeTypes[index] = StakeType({
+            rewardModifier: rewardModifier,
+            durationModifier: durationModifier,
+            duration: duration
+        });
+        emit stakeTypeModified(index, rewardModifier, durationModifier, duration);
+    }
 
     // withdraw
     function withdraw(address payable to) external {
@@ -120,48 +144,18 @@ contract StakingImplementation is StakingStorage {
 
     // staking
     function newStake(uint amount, uint stakeType) external {
-        uint _rewardAmount;
-        uint _unlockTimestamp;
+        // validate
+        require(stakeTypes[stakeType].duration != 0, "invalid stake type");
+        require(amount > 10000, "invalid amount");
 
         // transfer amount in
         IERC20 _stakingToken = IERC20(stakeToken);
         _stakingToken.transferFrom(msg.sender, address(this), amount);
 
-        // // staking types
-        // if ( stakeType == 1 ) { // lock 1 month; APY: 3.8%
-        //     _rewardAmount = amount * 380 / 10000 / 12;
-        //     _unlockTimestamp = block.timestamp + 2630000; // 1 month
-
-        // } else if ( stakeType == 2 ) { // lock 3 months; APY: 4%
-        //     _rewardAmount = amount * 400 / 10000 / 4;
-        //     _unlockTimestamp = block.timestamp + 7890000; // 3 months
-
-        // } else if ( stakeType == 3 ) { // lock 6 months; APY: 4.32%
-        //     _rewardAmount = amount * 432 / 10000 / 2;
-        //     _unlockTimestamp = block.timestamp + 15780000; // 6 months
-
-        // } else if ( stakeType == 4 ) { // lock 1 year; APY: 4.56%
-        //     _rewardAmount = amount * 456 / 10000;
-        //     _unlockTimestamp = block.timestamp + 31560000; // 1 year
-        // }
-
-        // staking types testing
-        if ( stakeType == 1 ) { // lock 10 minutes; APY: 3.8%
-            _rewardAmount = amount * 380 / 10000 / 12;
-            _unlockTimestamp = block.timestamp + 600; // 10 minutes
-
-        } else if ( stakeType == 2 ) { // lock 30 minutes; APY: 4%
-            _rewardAmount = amount * 400 / 10000 / 4;
-            _unlockTimestamp = block.timestamp + 1800; // 30 minutes
-
-        } else if ( stakeType == 3 ) { // lock 60 minutes; APY: 4.32%
-            _rewardAmount = amount * 432 / 10000 / 2;
-            _unlockTimestamp = block.timestamp + 3600; // 60 minutes
-
-        } else if ( stakeType == 4 ) { // lock 120 minutes; APY: 4.56%
-            _rewardAmount = amount * 456 / 10000;
-            _unlockTimestamp = block.timestamp + 7200; // 120 minutes
-        }
+        // calculate stake reward & duration
+        StakeType memory _stakeType = stakeTypes[stakeType];
+        uint _rewardAmount = amount * _stakeType.rewardModifier / 10000 / _stakeType.durationModifier;
+        uint _unlockTimestamp = block.timestamp + _stakeType.duration;
 
         // insert new stake
         Stake memory _stake = Stake({
@@ -290,6 +284,9 @@ contract StakingImplementation is StakingStorage {
         require(_stake.isUnbonding == false, "stake is already unbonding");
         require(_timestamp > _stake.unlockTimestamp, "stake is still locked");
 
+        // withdraw remaining reward
+        claimStakeReward(stakeId);
+
         // calculate claim amount
         uint _claimAmount = _stake.stakeAmount;
 
@@ -307,11 +304,6 @@ contract StakingImplementation is StakingStorage {
             _claimAmount,
             _timestamp
         );
-    }
-
-    function claimAll(uint stakeId) external {
-        claimStakeReward(stakeId);
-        claimStakePrincipal(stakeId);
     }
 
 }
