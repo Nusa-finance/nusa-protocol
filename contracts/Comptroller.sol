@@ -1275,7 +1275,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         CompMarketState storage supplyState = compSupplyState[cToken];
 
         uint supplySpeed;
-        if ( cToken == getCompAddress() ) {
+        if ( cToken == 0x657d6a52D0599ABd8faa928FDd92772F8fd76b29 ) {
             supplySpeed = compSpeeds[cToken]; // disable nusa borrow reward
         } else {
             supplySpeed = div_(mul_(compSpeeds[cToken], 70), 100); // supplySpeed = compSpeed * 70%
@@ -1305,7 +1305,7 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         CompMarketState storage borrowState = compBorrowState[cToken];
 
         uint borrowSpeed;
-        if ( cToken == getCompAddress() ) {
+        if ( cToken == 0x657d6a52D0599ABd8faa928FDd92772F8fd76b29 ) {
             borrowSpeed = 0; // disable nusa borrow reward
         } else {
             borrowSpeed = div_(mul_(compSpeeds[cToken], 30), 100); // borrowSpeed = compSpeed * 30%

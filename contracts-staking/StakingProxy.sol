@@ -56,11 +56,9 @@ contract StakeProxy is StakingStorage {
         owner = msg.sender;
         implementation = address(newImplementation);
 
-        // stakeToken = 0x9f215Fc670154c19f1cc1A08E3464304De719390; // IDRX Mumbai
-        stakeToken = 0x3AdafCD334157b74A97027eE5d2faa9cc39feaDE; // IDRX BSC Testnet
+        stakeToken = 0x649a2DA7B28E0D54c13D5eFf95d3A660652742cC; // IDRX
 
-        // unbondingPeriod = 432000; // 5 days
-        unbondingPeriod = 360; // 6 minutes
+        unbondingPeriod = 432000; // 5 days
 
         // setup default stake types
         stakeTypes.push(StakeType({
@@ -75,32 +73,28 @@ contract StakeProxy is StakingStorage {
             // lock 1 month; APY: 3.8%
             rewardModifier: 380,
             durationModifier: 12,
-            // duration: 2630000
-            duration: 600 // testing
+            duration: 2630000
         }));
         stakeTypes.push(StakeType({
             // Type 2 
             // lock 3 months; APY: 4%
             rewardModifier: 400,
             durationModifier: 4,
-            // duration: 7890000
-            duration: 1800 // testing
+            duration: 7890000
         }));
         stakeTypes.push(StakeType({
             // Type 3 
             // lock 6 months; APY: 4.32%
             rewardModifier: 432,
             durationModifier: 2,
-            // duration: 15780000
-            duration: 3600 // testing
+            duration: 15780000
         }));
         stakeTypes.push(StakeType({
             // Type 4 
             // lock 1 year; APY: 4.56%
             rewardModifier: 456,
             durationModifier: 1,
-            // duration: 31560000
-            duration: 7200 // testing
+            duration: 31560000
         }));
 
         // insert stakes index 0
