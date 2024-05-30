@@ -58,6 +58,9 @@ contract StakingStorage {
 
     // list of stakes
     Stake[] public stakes;
+
+    // list of locked stake types
+    mapping(uint => bool) public lockedTypes;
 }
 
 contract StakingImplementation is StakingStorage {
@@ -103,6 +106,11 @@ contract StakingImplementation is StakingStorage {
         uint duration
     );
     event newUnbondingPeriod(uint p);
+    event newStakeType(
+        uint rewardModifier,
+        uint durationModifier,
+        uint duration
+    );
 
     // getters
     function getStake(uint[] memory stakeId) external view returns (Stake[] memory) {
@@ -111,6 +119,9 @@ contract StakingImplementation is StakingStorage {
             _stakes[i] = stakes[stakeId[i]];
         }
         return _stakes;
+    }
+    function getLockedTypes(uint index) external view returns (bool) {
+        return lockedTypes[index];
     }
 
     // setters
@@ -127,6 +138,19 @@ contract StakingImplementation is StakingStorage {
             duration: duration
         });
         emit stakeTypeModified(index, rewardModifier, durationModifier, duration);
+    }
+    function setLockedTypes(uint index, bool val) external {
+        require(msg.sender == owner, "UNAUTHORIZED");
+        lockedTypes[index] = val;
+    }
+    function addStakeType(uint rewardModifier, uint durationModifier, uint duration) external {
+        require(msg.sender == owner, "UNAUTHORIZED");
+        stakeTypes.push(StakeType({
+            rewardModifier: rewardModifier,
+            durationModifier: durationModifier,
+            duration: duration
+        }));
+        emit newStakeType(rewardModifier, durationModifier, duration);
     }
 
     // withdraw
@@ -232,6 +256,7 @@ contract StakingImplementation is StakingStorage {
         uint _timestamp = block.timestamp;
 
         // validate
+        require(!lockedTypes[_stake.stakeType], "locked stake type");
         require(_stake.staker == msg.sender, "invalid staker");
         require(_stake.isActive == true, "stake is not active");
         require(_stake.isUnbonding == false, "stake is already unbonding");
@@ -248,6 +273,7 @@ contract StakingImplementation is StakingStorage {
         uint _timestamp = block.timestamp;
 
         // validate
+        require(!lockedTypes[_stake.stakeType], "locked stake type");
         require(_stake.staker == msg.sender, "invalid staker");
         require(_stake.isActive == true, "stake is not active");
         require(_stake.isUnbonding == true, "stake is not unbonding");
