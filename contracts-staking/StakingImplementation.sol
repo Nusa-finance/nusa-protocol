@@ -61,6 +61,9 @@ contract StakingStorage {
 
     // list of locked stake types
     mapping(uint => bool) public lockedTypes;
+
+    // stake manager
+    address public stakeManager = address(0);
 }
 
 contract StakingImplementation is StakingStorage {
@@ -111,6 +114,7 @@ contract StakingImplementation is StakingStorage {
         uint durationModifier,
         uint duration
     );
+    event newStakeManager(address a);
 
     // getters
     function getStake(uint[] memory stakeId) external view returns (Stake[] memory) {
@@ -125,6 +129,11 @@ contract StakingImplementation is StakingStorage {
     }
 
     // setters
+    function setStakeManager(address a) external {
+        require(msg.sender == owner, "UNAUTHORIZED");
+        stakeManager = a;
+        emit newStakeManager(stakeManager);
+    }
     function setUnbondingPeriod(uint p) external {
         require(msg.sender == owner, "UNAUTHORIZED");
         unbondingPeriod = p;
@@ -155,13 +164,13 @@ contract StakingImplementation is StakingStorage {
 
     // withdraw
     function withdraw(address payable to) external {
-        require(msg.sender == owner, "UNAUTHORIZED");
+        require(msg.sender == owner || msg.sender == stakeManager, "UNAUTHORIZED");
         if (address(this).balance > 0) {
             to.transfer(address(this).balance);
         }
     }
     function withdrawToken(address tokenAddress, address to, uint256 amount) external {
-        require(msg.sender == owner, "UNAUTHORIZED");
+        require(msg.sender == owner || msg.sender == stakeManager, "UNAUTHORIZED");
         IERC20 token = IERC20(tokenAddress);
         token.transfer(to, amount);
     }
