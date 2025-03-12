@@ -45,7 +45,7 @@ contract CTokenFactory is Ownable {
 
         require(bytes(nameErc20).length != 0, "underlying.name() is empty");
         require(bytes(symbolErc20).length != 0, "underlying.symbol() is empty");
-        require(underlyingDecimalErc20 > 0, "underlying.decimals() is empty");
+        // require(underlyingDecimalErc20 > 0, "underlying.decimals() is empty");
         require(underlyingErc20.totalSupply() > 0, "underlying.totalSupply() is empty");
         require(underlyingErc20.balanceOf(address(0)) >= 0, "underlying.balanceOf() is invalid");
         require(underlyingErc20.allowance(address(0), address(0)) >= 0, "underlying.allowance() is invalid");
