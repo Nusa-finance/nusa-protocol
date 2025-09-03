@@ -231,6 +231,8 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @return 0 if the mint is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
     function mintAllowed(address cToken, address minter, uint mintAmount) external returns (uint) {
+        require(false, "mint is temporarily paused");
+
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!mintGuardianPaused[cToken], "mint is paused");
 
@@ -277,6 +279,8 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @return 0 if the redeem is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
     function redeemAllowed(address cToken, address redeemer, uint redeemTokens) external returns (uint) {
+        require(false, "redeem is temporarily paused");
+
         uint allowed = redeemAllowedInternal(cToken, redeemer, redeemTokens);
         if (allowed != uint(Error.NO_ERROR)) {
             return allowed;
@@ -337,6 +341,8 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @return 0 if the borrow is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
     function borrowAllowed(address cToken, address borrower, uint borrowAmount) external returns (uint) {
+        require(false, "borrow is temporarily paused");
+
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!borrowGuardianPaused[cToken], "borrow is paused");
 
@@ -409,6 +415,9 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         address payer,
         address borrower,
         uint repayAmount) external returns (uint) {
+
+        require(false, "repay is temporarily paused");
+
         // Shh - currently unused
         payer;
         borrower;
@@ -466,6 +475,9 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         address liquidator,
         address borrower,
         uint repayAmount) external returns (uint) {
+
+        require(false, "liquidate is temporarily paused");
+
         // Shh - currently unused
         liquidator;
 
@@ -538,6 +550,8 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
         address liquidator,
         address borrower,
         uint seizeTokens) external returns (uint) {
+        require(false, "seize is temporarily paused");
+
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!seizeGuardianPaused, "paused");
 
@@ -596,6 +610,8 @@ contract Comptroller is ComptrollerTadpoleStorage, ComptrollerInterface, Comptro
      * @return 0 if the transfer is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
     function transferAllowed(address cToken, address src, address dst, uint transferTokens) external returns (uint) {
+        require(false, "transfer is temporarily paused");
+
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!transferGuardianPaused, "transfer is paused");
 

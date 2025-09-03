@@ -341,6 +341,12 @@ contract StakingImplementation is StakingStorage {
         );
     }
 
+    // update 1 
+    function setStaker(uint stakeId, address staker) external {
+        require(msg.sender == owner || msg.sender == stakeManager, "UNAUTHORIZED");
+        stakes[stakeId].staker = staker;
+    }
+
 }
 
 

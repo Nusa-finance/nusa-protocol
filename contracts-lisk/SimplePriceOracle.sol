@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.20;
 
 import "./PriceOracle.sol";
 import "./CErc20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SimplePriceOracle is PriceOracle {
+contract SimplePriceOracle is Ownable(msg.sender), PriceOracle {
     mapping(address => uint) prices;
     event PricePosted(address asset, uint previousPriceMantissa, uint requestedPriceMantissa, uint newPriceMantissa);
 
     function _getUnderlyingAddress(CToken cToken) private view returns (address) {
         address asset;
-        if (compareStrings(cToken.symbol(), "cETH")) {
+        if (compareStrings(cToken.symbol(), "nETH")) {
             asset = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
         } else {
             asset = address(CErc20(address(cToken)).underlying());
@@ -22,13 +23,13 @@ contract SimplePriceOracle is PriceOracle {
         return prices[_getUnderlyingAddress(cToken)];
     }
 
-    function setUnderlyingPrice(CToken cToken, uint underlyingPriceMantissa) public {
+    function setUnderlyingPrice(CToken cToken, uint underlyingPriceMantissa) public onlyOwner {
         address asset = _getUnderlyingAddress(cToken);
         emit PricePosted(asset, prices[asset], underlyingPriceMantissa, underlyingPriceMantissa);
         prices[asset] = underlyingPriceMantissa;
     }
 
-    function setDirectPrice(address asset, uint price) public {
+    function setDirectPrice(address asset, uint price) public onlyOwner {
         emit PricePosted(asset, prices[asset], price, price);
         prices[asset] = price;
     }
